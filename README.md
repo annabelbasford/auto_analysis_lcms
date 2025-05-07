@@ -64,10 +64,6 @@ auto_analysis_lcms/\
 Annabel Basford
 [GitHub: @annabelbasford](https://github.com/annabelbasford)
 
-```
 
----
-
-Let me know if you'd like this written directly to a new `README.md` file or want to add sample plots/screenshots.
 ```
 
