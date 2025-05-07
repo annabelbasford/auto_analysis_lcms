@@ -55,7 +55,7 @@ auto_analysis_lcms/\
 
 * Peaks with area <1% of the largest are filtered out
 * `peak_rt_tic` values are UV RTs adjusted to align with TIC scans
-* Raw data folders like `agilent_d/` and `mzML/` are ignored due to size
+* Raw data folders like `agilent_d/` and `mzML/` are omitted in github due to size
 
 ---
 
