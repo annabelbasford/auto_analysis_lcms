@@ -11,10 +11,10 @@ Each Agilent .d file should be converted to an mzML file and kept in /mzML/ fold
 ## 📁 Folder Structure
 
 auto_analysis_lcms/
-├── /DAD_uv/*_uv.csv # Input UV vs RT
+├── DAD_uv/*_uv.csv # Input UV vs RT
 ├── peak.csv # MS scan data per peak
-├── *_uv_peak_rt.csv # Peak summary per sample for uv and tic
-├── pngs/ # Output: plots per peak of uv data
+├── *_uv_peak_rt.csv # Peak summary per sample for UV and TIC
+├── pngs/ # Output: plots per peak of UV data
 ├── peak_mz_refined/ # Output: refined CSV spectra + plots per peak
 └── *.py # Analysis scripts
 ---
