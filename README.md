@@ -10,7 +10,6 @@ Each Agilent .d file should be converted to an mzML file and kept in /mzML/ fold
 
 ## 📁 Folder Structure
 
-"""
 ---
 auto_analysis_lcms/
 ├── DAD_uv/*_uv.csv # Input UV vs RT
