@@ -25,28 +25,7 @@ def _get_precursor_formula(smiles: str) -> EmpiricalFormula:
     precursor_formula = EmpiricalFormula(precursor)
     precursor_formula.setCharge(0) # to avoid error of -ve charge in EmpricialFormula
     return precursor_formula
-'''
-def poc_find_solutions(max_precursors,topicity_a, topicity_b):
-    """
-    Generate all valid precursor combinations of type A and B
-    given their topicities (number of reaction sites) and max total precursors.
 
-    Returns a list of tuples: (num_A, num_B, num_bonds)
-    """
-    solutions = []
-    for a in range(1, max_precursors +1):  # set number of topicimer A
-        for b in range(0, max_precursors +1):  # set number topicimer B1
-            if b * topicity_b < a * topicity_a:
-                max_imines = b * topicity_b
-            else:
-                max_imines = a * topicity_a
-            for x in range(a+b-1,max_imines+1): #set connectivity from linear connectivity up to maximum number of imines
-                if a + b < max_precursors:
-                    line = a,b,x #create tuple of values
-                    solutions.append(line)
-    solutions.sort(key=lambda x: x[0])  # Sort solutions by aldehydes
-    return solutions
-'''
 def poc_find_solutions(max_precursors, topicity_aldehyde, topicity_amine):
     """
     Generate all valid precursor combinations of aldehydes and amines
@@ -77,29 +56,6 @@ def poc_find_solutions(max_precursors, topicity_aldehyde, topicity_amine):
     solutions.sort(key=lambda combo: combo[0])
 
     return solutions
-'''
-def poc_find_solutions_ternary(max_precursors,topicity_a, topicity_b1, topicity_b2):
-    """
-    Generate all valid precursor combinations of type A and B
-    given their topicities (number of reaction sites) and max total precursors.
-
-    Returns a list of tuples: (num_A, num_B1, num_B2, num_bonds)
-    """
-    solutions = []
-    for a in range(1, max_precursors +1):  # set number of topicimer A
-        for b1 in range(0, max_precursors +1):  # set number topicimer B1
-            for b2 in range(0, max_precursors +1): # set number of topicimer B2
-                if b1 * topicity_b1 + b2 * topicity_b2 < a * topicity_a:
-                    max_imines = b1 * topicity_b1 + b2 * topicity_b2
-                else:
-                    max_imines = a * topicity_a
-                for x in range(a+b1+b2-1,max_imines+1): #set connectivity from linear connectivity up to maximum number of imines
-                    if a + b1 + b2 < max_precursors:
-                        line = a,b1,b2,x #create tuple of values
-                        solutions.append(line)
-    solutions.sort(key=lambda x: x[0])  # Sort solutions by aldehydes
-    return solutions
-'''
 
 def poc_find_solutions_ternary(max_precursors, topicity_aldehyde, topicity_amine1, topicity_amine2):
     """
