@@ -12,21 +12,11 @@ from pyopenms import EmpiricalFormula, FineIsotopePatternGenerator
 from pyopenms import *
 import csv
 from math import isclose
-#from tqdm import tqdm
 import json
 from pathlib import Path
 from typing import List
 from matplotlib.offsetbox import OffsetImage, AnchoredOffsetbox, HPacker
 
-'''
-import faulthandler
-faulthandler.enable()
-
-import os
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-'''
 def _get_precursor_formula(smiles: str) -> EmpiricalFormula:
     precursor = CalcMolFormula(rdkit.Chem.MolFromSmiles(smiles))
     for i in precursor:
@@ -35,8 +25,14 @@ def _get_precursor_formula(smiles: str) -> EmpiricalFormula:
     precursor_formula = EmpiricalFormula(precursor)
     precursor_formula.setCharge(0) # to avoid error of -ve charge in EmpricialFormula
     return precursor_formula
-
+'''
 def poc_find_solutions(max_precursors,topicity_a, topicity_b):
+    """
+    Generate all valid precursor combinations of type A and B
+    given their topicities (number of reaction sites) and max total precursors.
+
+    Returns a list of tuples: (num_A, num_B, num_bonds)
+    """
     solutions = []
     for a in range(1, max_precursors +1):  # set number of topicimer A
         for b in range(0, max_precursors +1):  # set number topicimer B1
@@ -50,8 +46,45 @@ def poc_find_solutions(max_precursors,topicity_a, topicity_b):
                     solutions.append(line)
     solutions.sort(key=lambda x: x[0])  # Sort solutions by aldehydes
     return solutions
+'''
+def poc_find_solutions(max_precursors, topicity_aldehyde, topicity_amine):
+    """
+    Generate all valid precursor combinations of aldehydes and amines
+    based on their topicities (number of reactive sites) and a maximum total number of precursors.
 
+    Returns:
+        List of tuples: (num_aldehydes, num_amines, num_imine_bonds)
+    """
+    solutions = []
+
+    for num_aldehydes in range(1, max_precursors + 1):
+        for num_amines in range(0, max_precursors + 1):
+
+            # Determine max number of imine bonds that can form based on topicities
+            max_possible_bonds = min(
+                num_aldehydes * topicity_aldehyde,
+                num_amines * topicity_amine
+            )
+
+            # Allow bond counts starting from minimum required for a connected network
+            min_bonds = num_aldehydes + num_amines - 1
+
+            for num_bonds in range(min_bonds, max_possible_bonds + 1):
+                if num_aldehydes + num_amines < max_precursors:
+                    solutions.append((num_aldehydes, num_amines, num_bonds))
+
+    # Optional: sort by number of aldehydes
+    solutions.sort(key=lambda combo: combo[0])
+
+    return solutions
+'''
 def poc_find_solutions_ternary(max_precursors,topicity_a, topicity_b1, topicity_b2):
+    """
+    Generate all valid precursor combinations of type A and B
+    given their topicities (number of reaction sites) and max total precursors.
+
+    Returns a list of tuples: (num_A, num_B1, num_B2, num_bonds)
+    """
     solutions = []
     for a in range(1, max_precursors +1):  # set number of topicimer A
         for b1 in range(0, max_precursors +1):  # set number topicimer B1
@@ -66,13 +99,55 @@ def poc_find_solutions_ternary(max_precursors,topicity_a, topicity_b1, topicity_
                         solutions.append(line)
     solutions.sort(key=lambda x: x[0])  # Sort solutions by aldehydes
     return solutions
+'''
+
+def poc_find_solutions_ternary(max_precursors, topicity_aldehyde, topicity_amine1, topicity_amine2):
+    """
+    Generate all valid precursor combinations involving:
+    - one aldehyde type
+    - two distinct amine types (amine1, amine2)
+
+    Each precursor has a specified number of reactive sites (topicity).
+    The total number of precursors must be less than max_precursors.
+
+    Returns:
+        List of tuples: (num_aldehydes, num_amines_1, num_amines_2, num_imine_bonds)
+    """
+    solutions = []
+
+    for num_aldehydes in range(1, max_precursors + 1):
+        for num_amines_1 in range(0, max_precursors + 1):
+            for num_amines_2 in range(0, max_precursors + 1):
+
+                # Calculate the maximum number of bonds based on topicities
+                total_amine_sites = (num_amines_1 * topicity_amine1) + (num_amines_2 * topicity_amine2)
+                total_aldehyde_sites = num_aldehydes * topicity_aldehyde
+                max_possible_bonds = min(total_aldehyde_sites, total_amine_sites)
+
+                min_bonds = num_aldehydes + num_amines_1 + num_amines_2 - 1
+
+                for num_bonds in range(min_bonds, max_possible_bonds + 1):
+                    if num_aldehydes + num_amines_1 + num_amines_2 < max_precursors:
+                        solutions.append((num_aldehydes, num_amines_1, num_amines_2, num_bonds))
+
+    # Optional: sort by number of aldehydes
+    solutions.sort(key=lambda combo: combo[0])
+
+    return solutions
 
 def poc_calc_formulas(solutions, prec_a_smiles, prec_b_smiles,max_charge):
+    """
+    Given precursor combinations and SMILES strings, generate formulas
+    for all charged species using OpenMS's EmpiricalFormula.
+
+    Returns a dictionary mapping a string key to a dict with 'formula' and 'charge'.
+    """
     prec_a_formula= _get_precursor_formula(prec_a_smiles)
     prec_b1_formula = _get_precursor_formula(prec_b_smiles)
     formulas = []
     names = []
-    H2O = EmpiricalFormula('H2O')
+    H2O = EmpiricalFormula('H2O') # Represents water loss per imine bond
+
     for solution in solutions:
         number_of_prec_a = solution[0]
         number_of_prec_b1 = solution[1]
@@ -83,7 +158,9 @@ def poc_calc_formulas(solutions, prec_a_smiles, prec_b_smiles,max_charge):
         for i in range(0,number_of_prec_b1):
                 compound_formula += prec_b1_formula
         for i in range(0,number_of_imines):
-                compound_formula -= H2O
+                compound_formula -= H2O # Remove water for each imine
+        
+        # Add protons for each possible charge state
         for charge in range(1,max_charge+1):
             compound_formula += EmpiricalFormula('H')
             gen_name = 'X'+str(number_of_prec_a)+'_Y'+str(number_of_prec_b1)+'_Bonds'+str(number_of_imines) + '_Charge'+str(charge) #generate name for dictionary key
@@ -94,6 +171,12 @@ def poc_calc_formulas(solutions, prec_a_smiles, prec_b_smiles,max_charge):
     return data
 
 def poc_calc_formulas_ternary(solutions, prec_a_smiles, prec_b1_smiles, prec_b2_smiles,max_charge):
+    """
+    Given precursor combinations and SMILES strings, generate formulas
+    for all charged species using OpenMS's EmpiricalFormula.
+
+    Returns a dictionary mapping a string key to a dict with 'formula' and 'charge'.
+    """
     prec_a_formula= _get_precursor_formula(prec_a_smiles)
     prec_b1_formula = _get_precursor_formula(prec_b1_smiles)
     prec_b2_formula = _get_precursor_formula(prec_b2_smiles) 
@@ -124,6 +207,13 @@ def poc_calc_formulas_ternary(solutions, prec_a_smiles, prec_b1_smiles, prec_b2_
     return data
 
 def poc_calc_formulas_full_cages(solutions, prec_a_smiles, topicity_a, prec_b_smiles, topicity_b, max_charge):
+    """
+    Given precursor combinations and SMILES strings, generate formulas
+    only for full cage molecules (all amines and aldehydes forming
+    imines) for all charged species using OpenMS's EmpiricalFormula.
+
+    Returns a dictionary mapping a string key to a dict with 'formula' and 'charge'.
+    """
     prec_a_formula= _get_precursor_formula(prec_a_smiles)
     prec_b1_formula = _get_precursor_formula(prec_b_smiles)
     formulas = []
@@ -180,34 +270,42 @@ def get_top_10_isotopes(formula_dict, error=1e-2): # error previously 1e-3
     return top_10_isotopes_dict
 
 def read_csv(file_path):
+    """
+    Reads a CSV file and standardizes column names for m/z and intensity.
+    Accepts both 'm/z' and 'height' as valid intensity representations.
+    """
     df = pd.read_csv(file_path)
-
-    # Normalize column names to lowercase
     df.columns = df.columns.str.lower()
 
     # Rename 'm/z' to 'mz' if present
     if 'm/z' in df.columns:
         df = df.rename(columns={'m/z': 'mz'})
 
-    # Now check for expected column combinations
+    # Determine final column names for processing
     if 'mz' in df.columns and 'height' in df.columns:
         df = df.rename(columns={'height': 'intensity'})
-        mz_col = 'mz'
-        intensity_col = 'intensity'
-    elif 'mz' in df.columns and 'intensity' in df.columns:
-        mz_col = 'mz'
-        intensity_col = 'intensity'
-    else:
-        raise ValueError(f"File {file_path} does not contain required 'mz' or 'm/z' and 'height' or 'intensity' columns.")
+    elif not ('mz' in df.columns and 'intensity' in df.columns):
+        raise ValueError(f"File {file_path} does not contain required columns.")
 
-    return list(zip(df[mz_col], df[intensity_col]))
+    return list(zip(df['mz'], df['intensity']))
 
 def find_matching_isotopes_df(mz_intensity_data, top_10_isotopes_dict, mass_error_ppm=20):
+    """
+    Match observed m/z-intensity peaks to predicted isotopic m/z values within a ppm tolerance.
+
+    Parameters:
+        mz_intensity_data: List of tuples (mz, intensity)
+        top_10_isotopes_dict: Dictionary of predicted isotopes
+        mass_error_ppm: Mass accuracy threshold in parts per million
+
+    Returns:
+        A pandas DataFrame of matching peaks and their metadata.
+    """
     matching_results = []
     
     # Determine the maximum intensity in the data
     max_intensity = max(intensity for mz, intensity in mz_intensity_data)
-    intensity_threshold = 0.01* max_intensity  # 0.5% of the maximum intensity previous 
+    intensity_threshold = 0.01* max_intensity  # 1% of the maximum intensity previous 
     
     #with tqdm(total=len(mz_intensity_data), desc="Processing peaks") as pbar:
     for mz, intensity in mz_intensity_data:
@@ -235,6 +333,13 @@ def find_matching_isotopes_df(mz_intensity_data, top_10_isotopes_dict, mass_erro
 
 
 def calculate_mz_differences(isotopes_df):
+    """
+    For each formula group, calculate the m/z difference between consecutive peaks,
+    infer charge from spacing, and compute the error from ideal spacing (1 m/z unit per charge).
+
+    Returns:
+        DataFrame with additional columns: mz_difference, charge, and splitting_error.
+    """
     # Sort by 'Formula' and 'found_mz' to ensure correct difference calculation
     df = isotopes_df.sort_values(by=['Formula', 'found_mz'],ascending=False)
 
@@ -262,13 +367,13 @@ def calculate_mz_differences(isotopes_df):
     return df
 
 def get_csv_file_names(directory: Path) -> List[Path]:
+    """
+    Retrieve all CSV files in the given directory.
+
+    Returns:
+        List of file paths with .csv extension.
+    """
     return [file for file in directory.iterdir() if file.suffix == '.csv']
-
-
-def save_json(data, filename):
-    """Save data to a JSON file."""
-    with open(filename, 'w') as f:
-        json.dump(data, f, indent=4)
 
 def main(csv_dir: str, Aldehyde_SMILES, Amine1_SMILES, Amine2_SMILES=None):
     max_precursors = 12
