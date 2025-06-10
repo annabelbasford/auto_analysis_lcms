@@ -201,34 +201,6 @@ def read_csv(file_path):
         raise ValueError(f"File {file_path} does not contain required 'mz' or 'm/z' and 'height' or 'intensity' columns.")
 
     return list(zip(df[mz_col], df[intensity_col]))
-'''
-def read_csv(file_path):
-    df = pd.read_csv(file_path)
-
-    # Normalize column names to lowercase and strip spaces
-    df.columns = df.columns.str.strip().str.lower()
-
-    # Show column names for debugging
-    print(f"Column names after normalization: {df.columns.tolist()}")
-
-    # Rename 'm/z' to 'mz' explicitly if present (after lowercasing)
-    column_renames = {}
-    for col in df.columns:
-        if col.replace(" ", "") in ["m/z", "mz"]:
-            column_renames[col] = "mz"
-        elif col == "height":
-            column_renames[col] = "intensity"
-
-    df = df.rename(columns=column_renames)
-
-    # Final check
-    print(f"Final column names after renaming: {df.columns.tolist()}")
-    print(df)
-    if 'mz' in df.columns and 'intensity' in df.columns:
-        return list(zip(df['mz'], df['intensity']))
-    else:
-        raise ValueError(f"File {file_path} does not contain required 'mz' or 'm/z' and 'height' or 'intensity' columns.")
-'''
 
 def find_matching_isotopes_df(mz_intensity_data, top_10_isotopes_dict, mass_error_ppm=20):
     matching_results = []
@@ -297,102 +269,6 @@ def save_json(data, filename):
     """Save data to a JSON file."""
     with open(filename, 'w') as f:
         json.dump(data, f, indent=4)
-
-'''
-def main(csv_dir: str, Aldehyde_SMILES, Amine1_SMILES, Amine2_SMILES=None):
-    max_precursors = 30
-
-    # Get the data paths and load the data from the reactions json file
-    csv_directory = Path(csv_dir)
-    csv_file_path_list = get_csv_file_names(csv_directory)
-
-    amine_pattern = Chem.MolFromSmarts('[NH2]')
-    aldehyde_pattern = Chem.MolFromSmarts('[CX3H1](=O)[#6]')
-
-    prec_a_smiles = Aldehyde_SMILES
-    topicity_a = len(Chem.MolFromSmiles(prec_a_smiles).GetSubstructMatches(aldehyde_pattern))
-    prec_b1_smiles = Amine1_SMILES
-    topicity_b1 = len(Chem.MolFromSmiles(prec_b1_smiles).GetSubstructMatches(amine_pattern))
-    
-    if Amine2_SMILES is not None:
-        prec_b2_smiles = Amine2_SMILES
-        topicity_b2 = len(Chem.MolFromSmiles(prec_b2_smiles).GetSubstructMatches(amine_pattern))
-
-    # get the stems of the csv filenames to match with the codes in reactions_data
-    csv_file_stems = {f.stem for f in csv_file_path_list}
-           
-    for n,csv_path in enumerate(csv_file_path_list):
-        
-        print(f"Processing {csv_path.name}")
-
-        if Amine2_SMILES is not None:
-            precursor_combinations = poc_find_solutions_ternary(max_precursors, topicity_a, topicity_b1, topicity_b2)
-            poc_formula_dict = poc_calc_formulas_ternary(precursor_combinations, prec_a_smiles, prec_b1_smiles, prec_b2_smiles, 4)
-        else:
-            precursor_combinations = poc_find_solutions(max_precursors, topicity_a, topicity_b1)
-            poc_formula_dict = poc_calc_formulas(precursor_combinations, prec_a_smiles, prec_b_smiles, 4)
-        isotopes_dict = get_top_10_isotopes(poc_formula_dict)
-        mz_intensity_data = read_csv(csv_path)
-        matching_peaks_df = find_matching_isotopes_df(mz_intensity_data, isotopes_dict)
-        if matching_peaks_df.empty:
-            print(f"Skipping {csv_path.name}: No matching peaks found.")
-            continue
-        result_df = calculate_mz_differences(matching_peaks_df)
-        result_filtered_df = result_df[result_df['predicted_charge'] == result_df['charge']]
-
-        output_file = csv_path.with_name(f"{csv_path.stem}_output.csv")
-        result_filtered_df.to_csv(output_file, index=False)
-        print(f"Saved: {output_file}")
-
-        # Reload, sort and group data
-        df = pd.read_csv(csv_path)
-        if 'm/z' in df.columns:
-            df = df.rename(columns={'m/z': 'mz'})
-        df2 = result_filtered_df.sort_values(by=["found_intensity"], ascending=False)
-        highest_intensity_peaks = df2.groupby("Formula")["found_intensity"].idxmax()
-
-        # Create plot
-        fig, ax = plt.subplots(figsize=(12, 8))
-        ax.bar(df["mz"], df["Intensity"], width=0.01, edgecolor="red", color="red", alpha=0.3)
-
-        # Add peak labels
-        for idx, row in df2.loc[highest_intensity_peaks].iterrows():
-            ax.bar(row["found_mz"], row["found_intensity"], width=0.01, edgecolor="black", color="black")
-            ax.text(row["found_mz"], row["found_intensity"], row["Formula"], 
-                    ha="center", va="bottom", fontsize=8, clip_on=True)
-
-        # Save processed output
-        df2.to_csv(str(Path(csv_path).with_name(Path(csv_path).stem+'_processed').with_suffix('.csv')), index=False)
-
-        # get images of the precursor structures using rdkit
-        smiles_list = [prec_a_smiles, prec_b1_smiles, prec_b2_smiles]
-        mol_images = []
-        for smi in smiles_list:
-            mol = Chem.MolFromSmiles(smi)
-            if mol:
-                img = Draw.MolToImage(mol, size=(300, 300))
-                mol_images.append(OffsetImage(img, zoom=0.6))
-
-        # Add insets to top-right corner
-        if mol_images:
-            hbox = HPacker(children=mol_images, align="center", pad=0, sep=10)
-            anchored_box = AnchoredOffsetbox(
-                loc='upper right', child=hbox, pad=0.5, frameon=False,
-                bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes, borderpad=0.3
-            )
-            ax.add_artist(anchored_box)
-
-        # Final plot formatting
-        ax.set_xlim(199.5, 3200.5)
-        ax.set_xlabel("m/z")
-        ax.set_ylabel("Intensity")
-        ax.set_title("Matching Peaks (Highest Intensity)")
-        plt.title(str(Path(csv_path).stem))
-        plt.tight_layout()
-        plt.savefig(str(Path(csv_path).with_suffix('.png')),dpi=300)
-        #plt.show()
-        plt.close()
-'''
 
 def main(csv_dir: str, Aldehyde_SMILES, Amine1_SMILES, Amine2_SMILES=None):
     max_precursors = 12
