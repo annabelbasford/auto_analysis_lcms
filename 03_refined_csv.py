@@ -4,7 +4,7 @@ import csv
 import matplotlib.pyplot as plt
 
 # Input/output folders
-input_folder = '/auto_analysis_lcms/'
+input_folder = '/Users/user/Documents/GitHub/auto_analysis_lcms'
 output_folder = os.path.join(input_folder, 'peak_mz_refined')
 os.makedirs(output_folder, exist_ok=True)
 
