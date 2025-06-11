@@ -110,15 +110,15 @@ def poc_calc_formulas(solutions, smiles_aldehyde, smiles_amine1,max_charge):
         num_bonds = solution[2]
         compound_formula= EmpiricalFormula(formula_aldehyde) #start generating Empirical formula with openpyms with one precursor a
         for i in range(0,num_aldehydes-1): #for each component start adding on fragments
-                compound_formula += formula_aldehyde
+                compound_formula = compound_formula + formula_aldehyde
         for i in range(0,num_amines):
-                compound_formula += formula_amine1
+                compound_formula = compound_formula + formula_amine1
         for i in range(0,num_bonds):
-                compound_formula -= H2O # Remove water for each imine
+                compound_formula = compound_formula - H2O # Remove water for each imine
         
         # Add protons for each possible charge state
         for charge in range(1,max_charge+1):
-            compound_formula += EmpiricalFormula('H')
+            compound_formula = compound_formula + EmpiricalFormula('H')
             gen_name = 'X'+str(num_aldehydes)+'_Y'+str(num_amines)+'_Bonds'+str(num_bonds) + '_Charge'+str(charge) #generate name for dictionary key
             names.append(gen_name)
             comp_properties = {'formula':compound_formula,'charge': charge}
@@ -146,15 +146,15 @@ def poc_calc_formulas_ternary(solutions, smiles_aldehyde, smiles_amine1, smiles_
         num_bonds = solution[3]
         compound_formula=formula_aldehyde #start generating Empirical formula with openpyms with one precursor a
         for i in range(0,num_aldehydes-1): #for each component start adding on fragments
-                compound_formula += formula_aldehyde
+                compound_formula = compound_formula + formula_aldehyde
         for i in range(0,num_amines_1):
-                compound_formula += formula_amine1
+                compound_formula = compound_formula + formula_amine1
         for i in range(0,num_amines_2):
-                compound_formula += formula_amine2
+                compound_formula = compound_formula + formula_amine2
         for i in range(0,num_bonds):
-                compound_formula -= H2O
+                compound_formula = compound_formula - H2O
         for charge in range(1,max_charge+1):
-            compound_formula += EmpiricalFormula('H')
+            compound_formula = compound_formula + EmpiricalFormula('H')
             gen_name = 'X'+str(num_aldehydes)+'_Y'+str(num_amines_1)+'_Z'+str(num_amines_2)+'_Bonds'+str(num_bonds) + '_Charge'+str(charge) #generate name for dictionary key
             names.append(gen_name)
             comp_properties = {'formula':compound_formula,'charge': charge}
