@@ -26,7 +26,7 @@ def _get_precursor_formula(smiles: str) -> EmpiricalFormula:
     precursor_formula.setCharge(0) # to avoid error of -ve charge in EmpricialFormula
     return precursor_formula
 
-def poc_find_solutions(max_precursors, topicity_aldehyde, topicity_amine1):
+def poc_find_solutions(max_precursors, topicity_aldehyde, topicity_amine):
     """
     Generate all valid precursor combinations of aldehydes and amines
     based on their topicities (number of reactive sites) and a maximum total number of precursors.
@@ -42,7 +42,7 @@ def poc_find_solutions(max_precursors, topicity_aldehyde, topicity_amine1):
             # Determine max number of imine bonds that can form based on topicities
             max_possible_bonds = min(
                 num_aldehydes * topicity_aldehyde,
-                num_amines * topicity_amine1
+                num_amines * topicity_amine
             )
 
             # Allow bond counts starting from minimum required for a connected network
@@ -91,7 +91,7 @@ def poc_find_solutions_ternary(max_precursors, topicity_aldehyde, topicity_amine
 
     return solutions
 
-def poc_calc_formulas(solutions, smiles_aldehyde, smiles_amine1,max_charge):
+def poc_calc_formulas(solutions, smiles_aldehyde, smiles_amine,max_charge):
     """
     Given precursor combinations and SMILES strings, generate formulas
     for all charged species using OpenMS's EmpiricalFormula.
@@ -99,7 +99,7 @@ def poc_calc_formulas(solutions, smiles_aldehyde, smiles_amine1,max_charge):
     Returns a dictionary mapping a string key to a dict with 'formula' and 'charge'.
     """
     formula_aldehyde = _get_precursor_formula(smiles_aldehyde)
-    formula_amine = _get_precursor_formula(smiles_amine1)
+    formula_amine = _get_precursor_formula(smiles_amine)
     formulas = []
     names = []
     H2O = EmpiricalFormula('H2O') # Represents water loss per imine bond
