@@ -91,108 +91,74 @@ def poc_find_solutions_ternary(max_precursors, topicity_aldehyde, topicity_amine
 
     return solutions
 
-def poc_calc_formulas(solutions, prec_a_smiles, prec_b_smiles,max_charge):
+def poc_calc_formulas(solutions, smiles_aldehyde, smiles_amine,max_charge):
     """
     Given precursor combinations and SMILES strings, generate formulas
     for all charged species using OpenMS's EmpiricalFormula.
 
     Returns a dictionary mapping a string key to a dict with 'formula' and 'charge'.
     """
-    prec_a_formula= _get_precursor_formula(prec_a_smiles)
-    prec_b1_formula = _get_precursor_formula(prec_b_smiles)
+    formula_aldehyde = _get_precursor_formula(smiles_aldehyde)
+    formula_amine = _get_precursor_formula(smiles_amine)
     formulas = []
     names = []
     H2O = EmpiricalFormula('H2O') # Represents water loss per imine bond
 
     for solution in solutions:
-        number_of_prec_a = solution[0]
-        number_of_prec_b1 = solution[1]
-        number_of_imines = solution[2]
-        compound_formula= EmpiricalFormula(prec_a_formula) #start generating Empirical formula with openpyms with one precursor a
-        for i in range(0,number_of_prec_a-1): #for each component start adding on fragments
-                compound_formula += prec_a_formula
-        for i in range(0,number_of_prec_b1):
-                compound_formula += prec_b1_formula
-        for i in range(0,number_of_imines):
-                compound_formula -= H2O # Remove water for each imine
+        num_aldehydes = solution[0]
+        num_amines = solution[1]
+        num_bonds = solution[2]
+        compound_formula= EmpiricalFormula(formula_aldehyde) #start generating Empirical formula with openpyms with one precursor a
+        for i in range(0,num_aldehydes-1): #for each component start adding on fragments
+                compound_formula = compound_formula + formula_aldehyde
+        for i in range(0,num_amines):
+                compound_formula = compound_formula + formula_amine1
+        for i in range(0,num_bonds):
+                compound_formula = compound_formula - H2O # Remove water for each imine
         
         # Add protons for each possible charge state
         for charge in range(1,max_charge+1):
-            compound_formula += EmpiricalFormula('H')
-            gen_name = 'X'+str(number_of_prec_a)+'_Y'+str(number_of_prec_b1)+'_Bonds'+str(number_of_imines) + '_Charge'+str(charge) #generate name for dictionary key
+            compound_formula = compound_formula + EmpiricalFormula('H')
+            gen_name = 'X'+str(num_aldehydes)+'_Y'+str(num_amines)+'_Bonds'+str(num_bonds) + '_Charge'+str(charge) #generate name for dictionary key
             names.append(gen_name)
             comp_properties = {'formula':compound_formula,'charge': charge}
             formulas.append(comp_properties)
     data = dict(zip(names,formulas))
     return data
 
-def poc_calc_formulas_ternary(solutions, prec_a_smiles, prec_b1_smiles, prec_b2_smiles,max_charge):
+def poc_calc_formulas_ternary(solutions, smiles_aldehyde, smiles_amine1, smiles_amine2,max_charge):
     """
     Given precursor combinations and SMILES strings, generate formulas
     for all charged species using OpenMS's EmpiricalFormula.
 
     Returns a dictionary mapping a string key to a dict with 'formula' and 'charge'.
     """
-    prec_a_formula= _get_precursor_formula(prec_a_smiles)
-    prec_b1_formula = _get_precursor_formula(prec_b1_smiles)
-    prec_b2_formula = _get_precursor_formula(prec_b2_smiles) 
+    formula_aldehyde = _get_precursor_formula(smiles_aldehyde)
+    formula_amine1 = _get_precursor_formula(smiles_amine1)
+    formula_amine2 = _get_precursor_formula(smiles_amine2) 
     formulas = []
     names = []
     H2O = EmpiricalFormula('H2O')
     for solution in solutions:
-        number_of_prec_a = solution[0]
-        number_of_prec_b1 = solution[1]
-        number_of_prec_b2 = solution[2]
-        number_of_imines = solution[3]
-        compound_formula=prec_a_formula #start generating Empirical formula with openpyms with one precursor a
-        for i in range(0,number_of_prec_a-1): #for each component start adding on fragments
-                compound_formula = compound_formula + prec_a_formula
-        for i in range(0,number_of_prec_b1):
-                compound_formula = compound_formula + prec_b1_formula
-        for i in range(0,number_of_prec_b2):
-                compound_formula = compound_formula + prec_b2_formula
-        for i in range(0,number_of_imines):
+        num_aldehydes = solution[0]
+        num_amines_1 = solution[1]
+        num_amines_2 = solution[2]
+        num_bonds = solution[3]
+        compound_formula=formula_aldehyde #start generating Empirical formula with openpyms with one precursor a
+        for i in range(0,num_aldehydes-1): #for each component start adding on fragments
+                compound_formula = compound_formula + formula_aldehyde
+        for i in range(0,num_amines_1):
+                compound_formula = compound_formula + formula_amine1
+        for i in range(0,num_amines_2):
+                compound_formula = compound_formula + formula_amine2
+        for i in range(0,num_bonds):
                 compound_formula = compound_formula - H2O
         for charge in range(1,max_charge+1):
             compound_formula = compound_formula + EmpiricalFormula('H')
-            gen_name = 'X'+str(number_of_prec_a)+'_Y'+str(number_of_prec_b1)+'_Z'+str(number_of_prec_b2)+'_Bonds'+str(number_of_imines) + '_Charge'+str(charge) #generate name for dictionary key
+            gen_name = 'X'+str(num_aldehydes)+'_Y'+str(num_amines_1)+'_Z'+str(num_amines_2)+'_Bonds'+str(num_bonds) + '_Charge'+str(charge) #generate name for dictionary key
             names.append(gen_name)
             comp_properties = {'formula':compound_formula,'charge': charge}
             formulas.append(comp_properties) 
-    data = dict(zip(names,formulas))
-    return data
-
-def poc_calc_formulas_full_cages(solutions, prec_a_smiles, topicity_a, prec_b_smiles, topicity_b, max_charge):
-    """
-    Given precursor combinations and SMILES strings, generate formulas
-    only for full cage molecules (all amines and aldehydes forming
-    imines) for all charged species using OpenMS's EmpiricalFormula.
-
-    Returns a dictionary mapping a string key to a dict with 'formula' and 'charge'.
-    """
-    prec_a_formula= _get_precursor_formula(prec_a_smiles)
-    prec_b1_formula = _get_precursor_formula(prec_b_smiles)
-    formulas = []
-    names = []
-    H2O = EmpiricalFormula('H2O')
-    for solution in solutions:
-        number_of_prec_a = solution[0]
-        number_of_prec_b1 = solution[1]
-        number_of_imines = solution[2]
-        if number_of_prec_a * topicity_a == number_of_prec_b1 * topicity_b == number_of_imines:
-            compound_formula= EmpiricalFormula(prec_a_formula) #start generating Empirical formula with openpyms with one precursor a
-            for i in range(0,number_of_prec_a-1): #for each component start adding on fragments
-                    compound_formula += prec_a_formula
-            for i in range(0,number_of_prec_b1):
-                    compound_formula += prec_b1_formula
-            for i in range(0,number_of_imines):
-                    compound_formula -= H2O
-            for charge in range(1,max_charge+1):
-                compound_formula += EmpiricalFormula('H')
-                gen_name = 'X'+str(number_of_prec_a)+'_Y'+str(number_of_prec_b1)+'_Bonds'+str(number_of_imines) + '_Charge'+str(charge) #generate name for dictionary key
-                names.append(gen_name)
-                comp_properties = {'formula':compound_formula,'charge': charge}
-                formulas.append(comp_properties)
     data = dict(zip(names,formulas))
     return data
 
@@ -331,7 +297,7 @@ def get_csv_file_names(directory: Path) -> List[Path]:
     """
     return [file for file in directory.iterdir() if file.suffix == '.csv']
 
-def main(csv_dir: str, Aldehyde_SMILES, Amine1_SMILES, Amine2_SMILES=None):
+def main(csv_dir: str, smiles_aldehyde, smiles_amine1, smiles_amine2=None):
     max_precursors = 12
 
     # Set up paths
@@ -344,24 +310,21 @@ def main(csv_dir: str, Aldehyde_SMILES, Amine1_SMILES, Amine2_SMILES=None):
     amine_pattern = Chem.MolFromSmarts('[NH2]')
     aldehyde_pattern = Chem.MolFromSmarts('[CX3H1](=O)[#6]')
 
-    prec_a_smiles = Aldehyde_SMILES
-    topicity_a = len(Chem.MolFromSmiles(prec_a_smiles).GetSubstructMatches(aldehyde_pattern))
-    prec_b1_smiles = Amine1_SMILES
-    topicity_b1 = len(Chem.MolFromSmiles(prec_b1_smiles).GetSubstructMatches(amine_pattern))
+    topicity_aldehyde = len(Chem.MolFromSmiles(smiles_aldehyde).GetSubstructMatches(aldehyde_pattern))
+    topicity_amine1 = len(Chem.MolFromSmiles(smiles_amine1).GetSubstructMatches(amine_pattern))
 
-    if Amine2_SMILES is not None:
-        prec_b2_smiles = Amine2_SMILES
-        topicity_b2 = len(Chem.MolFromSmiles(prec_b2_smiles).GetSubstructMatches(amine_pattern))
+    if smiles_amine2 is not None:
+        topicity_amine2 = len(Chem.MolFromSmiles(smiles_amine2).GetSubstructMatches(amine_pattern))
 
     for csv_path in csv_file_path_list:
         print(f"Processing {csv_path.name}")
 
-        if Amine2_SMILES is not None:
-            precursor_combinations = poc_find_solutions_ternary(max_precursors, topicity_a, topicity_b1, topicity_b2)
-            poc_formula_dict = poc_calc_formulas_ternary(precursor_combinations, prec_a_smiles, prec_b1_smiles, prec_b2_smiles, 4)
+        if smiles_amine2 is not None:
+            precursor_combinations = poc_find_solutions_ternary(max_precursors, topicity_aldehyde, topicity_amine1, topicity_amine2)
+            poc_formula_dict = poc_calc_formulas_ternary(precursor_combinations, smiles_aldehyde, smiles_amine1, smiles_amine2, 6)
         else:
-            precursor_combinations = poc_find_solutions(max_precursors, topicity_a, topicity_b1)
-            poc_formula_dict = poc_calc_formulas(precursor_combinations, prec_a_smiles, prec_b1_smiles, 4)
+            precursor_combinations = poc_find_solutions(max_precursors, topicity_aldehyde, topicity_amine1)
+            poc_formula_dict = poc_calc_formulas(precursor_combinations, smiles_aldehyde, smiles_amine1, 6)
 
         isotopes_dict = get_top_10_isotopes(poc_formula_dict)
         mz_intensity_data = read_csv(csv_path)
@@ -396,7 +359,7 @@ def main(csv_dir: str, Aldehyde_SMILES, Amine1_SMILES, Amine2_SMILES=None):
                     ha="center", va="bottom", fontsize=8, clip_on=True)
 
         # Add RDKit molecule images
-        smiles_list = [prec_a_smiles, prec_b1_smiles] + ([prec_b2_smiles] if Amine2_SMILES else [])
+        smiles_list = [smiles_aldehyde, smiles_amine1] + ([smiles_amine2] if smiles_amine2 else [])
         mol_images = []
         for smi in smiles_list:
             mol = Chem.MolFromSmiles(smi)
