@@ -16,15 +16,15 @@ Future work will focus on adding the script used to automate the file conversion
 
 ---
 
-auto_analysis_lcms/\
-- reaction_planner.json # JSON of each reaction with metadata\
-- assigned_peaks_data/ # CSVs of the mass_assignment and the processed CSV + annotated spectra plotted of the assigned mz vs intensity data\
-- DAD_uv/*_uv.csv # Input UV vs RT\
-- mzML/ *.mzML # mzML files converted from agilent .d\
-- peaks_mz_csv/ # outputs from mzML to CSV within the rt range for each peak\
-- peaks_mz_refined/ # filtered CSV for each peak + the plotted data of mz vs intensity for that peak\
-- pngs/ # Output: annotated plots per peak of UV data\
-- *_uv_peak_rt.csv # Peak summary per sample for UV and TIC\
+auto_analysis_lcms/
+- reaction_planner.json # JSON of each reaction with metadata
+- assigned_peaks_data/ # CSVs of the mass_assignment and the processed CSV + annotated spectra plotted of the assigned mz vs intensity data
+- DAD_uv/*_uv.csv # Input UV vs RT
+- mzML/ *.mzML # mzML files converted from agilent .d
+- peaks_mz_csv/ # outputs from mzML to CSV within the rt range for each peak
+- peaks_mz_refined/ # filtered CSV for each peak + the plotted data of mz vs intensity for that peak
+- pngs/ # Output: annotated plots per peak of UV data
+- *_uv_peak_rt.csv # Peak summary per sample for UV and TIC
 - *.py # Analysis scripts
 """
 ---
