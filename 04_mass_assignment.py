@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import polars as pl
 from pathlib import Path
 import rdkit 
 from rdkit import Chem
@@ -10,12 +9,12 @@ from rdkit.Chem.Descriptors import ExactMolWt
 from rdkit.Chem import Draw
 from pyopenms import EmpiricalFormula, FineIsotopePatternGenerator
 from pyopenms import *
-import csv
 from math import isclose
 import json
 from pathlib import Path
 from typing import List
 from matplotlib.offsetbox import OffsetImage, AnchoredOffsetbox, HPacker
+import os
 
 def _get_precursor_formula(smiles: str) -> EmpiricalFormula:
     precursor = CalcMolFormula(rdkit.Chem.MolFromSmiles(smiles))
@@ -91,7 +90,7 @@ def poc_find_solutions_ternary(max_precursors, topicity_aldehyde, topicity_amine
 
     return solutions
 
-def poc_calc_formulas(solutions, smiles_aldehyde, smiles_amine,max_charge):
+def poc_calc_formulas(solutions, smiles_aldehyde, smiles_amine, max_charge):
     """
     Given precursor combinations and SMILES strings, generate formulas
     for all charged species using OpenMS's EmpiricalFormula.
@@ -112,7 +111,7 @@ def poc_calc_formulas(solutions, smiles_aldehyde, smiles_amine,max_charge):
         for i in range(0,num_aldehydes-1): #for each component start adding on fragments
                 compound_formula = compound_formula + formula_aldehyde
         for i in range(0,num_amines):
-                compound_formula = compound_formula + formula_amine1
+                compound_formula = compound_formula + formula_amine
         for i in range(0,num_bonds):
                 compound_formula = compound_formula - H2O # Remove water for each imine
         
@@ -126,7 +125,7 @@ def poc_calc_formulas(solutions, smiles_aldehyde, smiles_amine,max_charge):
     data = dict(zip(names,formulas))
     return data
 
-def poc_calc_formulas_ternary(solutions, smiles_aldehyde, smiles_amine1, smiles_amine2,max_charge):
+def poc_calc_formulas_ternary(solutions, smiles_aldehyde, smiles_amine1, smiles_amine2, max_charge):
     """
     Given precursor combinations and SMILES strings, generate formulas
     for all charged species using OpenMS's EmpiricalFormula.
@@ -165,7 +164,6 @@ def poc_calc_formulas_ternary(solutions, smiles_aldehyde, smiles_amine1, smiles_
 def get_top_10_isotopes(formula_dict, error=1e-2): # error previously 1e-3
     top_10_isotopes_dict = {}
 
-#    with tqdm(total=len(formula_dict), desc="Calulating isotope peaks") as pbar:
     for key, value in formula_dict.items():
         formula = value['formula']
         charge = value['charge']
@@ -202,6 +200,9 @@ def read_csv(file_path):
     # Rename 'm/z' to 'mz' if present
     if 'm/z' in df.columns:
         df = df.rename(columns={'m/z': 'mz'})
+
+    if 'Intensity' in df.columns:
+        df = df.rename(columns={'Intensity': 'intensity'})
 
     # Determine final column names for processing
     if 'mz' in df.columns and 'height' in df.columns:
@@ -297,98 +298,133 @@ def get_csv_file_names(directory: Path) -> List[Path]:
     """
     return [file for file in directory.iterdir() if file.suffix == '.csv']
 
-def main(csv_dir: str, smiles_aldehyde, smiles_amine1, smiles_amine2=None):
-    max_precursors = 12
+def load_experiment_data(json_path: Path) -> List[dict]:
+    with open(json_path, 'r') as f:
+        return json.load(f)
+
+def main():
+    max_precursors = 12 # Maximum number of precursors to consider in the reaction, increasing this will increase the number of possible combinations and thus the time it takes to run the script
 
     # Set up paths
-    csv_directory = Path(csv_dir)
-    output_dir = csv_directory / "assigned_peaks_data"
-    output_dir.mkdir(exist_ok=True)  # Create if it doesn't exist
+    parent_folder = '/home/abasford/projects/auto_analysis_lcms/'
+    input_folder = '/home/abasford/projects/auto_analysis_lcms/peaks_mz_refined/' # Folder containing the refined CSV files for each peak for each reaction sample
+    output_folder = os.path.join(parent_folder, 'assigned_peaks_data') # Folder to save the output files with assigned peaks and plots
+    os.makedirs(output_folder, exist_ok=True)
 
-    csv_file_path_list = get_csv_file_names(csv_directory)
+    # read in JSON from the input_folder which maps the raections, number of components with their SMILES
+    reactions = load_experiment_data(os.path.join(parent_folder, 'reaction_planner.json'))
 
+    # Get all CSV files in the input folder that end with '_refined.csv'
+    csv_file_path_list = [f for f in os.listdir(input_folder) if f.endswith('_refined.csv')]
+    print(f"Found {len(csv_file_path_list)} CSV files in {input_folder}")
+
+    # assign functionality to via smarts 
     amine_pattern = Chem.MolFromSmarts('[NH2]')
     aldehyde_pattern = Chem.MolFromSmarts('[CX3H1](=O)[#6]')
 
-    topicity_aldehyde = len(Chem.MolFromSmiles(smiles_aldehyde).GetSubstructMatches(aldehyde_pattern))
-    topicity_amine1 = len(Chem.MolFromSmiles(smiles_amine1).GetSubstructMatches(amine_pattern))
+    # iterate through the CSV files in the csv_file_path_list
+    for file in csv_file_path_list:
+        # extract the base name of the file which doesnt include the extension _peak_* 
+        csv_base_name = file.split('_peak_')[0]
+        csv_peak_number = file.split('_peak')[1].replace('_refined.csv', '')  # Extract the peak number and remove the .csv extension
+        name = csv_base_name + csv_peak_number # Create a name for the output files based on the base name and peak number
+    # for each reaction in reactions, extract the relevant data
+        for reaction in reactions:
+            # Check if the base name matches the reaction's base_name
+            reaction_base_name = reaction.get('base_name') # to find which reaction this CSV peak belongs to
+            if csv_base_name == reaction_base_name:
+                if reaction.get('num_components') == 2:
+                    smiles_aldehyde = reaction.get('smiles_aldehyde')
+                    topicity_aldehyde = len(Chem.MolFromSmiles(smiles_aldehyde).GetSubstructMatches(aldehyde_pattern)) # number of reactive sites in the aldehyde
+                    smiles_amine1 = reaction.get('smiles_amine')
+                    topicity_amine1 = len(Chem.MolFromSmiles(smiles_amine1).GetSubstructMatches(amine_pattern)) # number of reactive sites in the amine
+                    smiles_amine2 = None
+                    topicity_amine2 = 0
 
-    if smiles_amine2 is not None:
-        topicity_amine2 = len(Chem.MolFromSmiles(smiles_amine2).GetSubstructMatches(amine_pattern))
+                    # as two component, use poc_find_solutions and poc_calc_formulas
+                    precursor_combinations = poc_find_solutions(max_precursors, topicity_aldehyde, topicity_amine1)
+                    poc_formula_dict = poc_calc_formulas(precursor_combinations, smiles_aldehyde, smiles_amine1, 6)
 
-    for csv_path in csv_file_path_list:
-        print(f"Processing {csv_path.name}")
+                elif reaction.get('num_components') == 3:
+                    smiles_aldehyde = reaction.get('smiles_aldehyde')
+                    topicity_aldehyde = len(Chem.MolFromSmiles(smiles_aldehyde).GetSubstructMatches(aldehyde_pattern)) # number of reactive sites in the aldehyde
+                    smiles_amine1 = reaction.get('smiles_amine1')
+                    topicity_amine1 = len(Chem.MolFromSmiles(smiles_amine1).GetSubstructMatches(amine_pattern)) # number of reactive sites in the first amine
+                    smiles_amine2 = reaction.get('smiles_amine2')
+                    topicity_amine2 = len(Chem.MolFromSmiles(smiles_amine2).GetSubstructMatches(amine_pattern)) # number of reactive sites in the second amine
 
-        if smiles_amine2 is not None:
-            precursor_combinations = poc_find_solutions_ternary(max_precursors, topicity_aldehyde, topicity_amine1, topicity_amine2)
-            poc_formula_dict = poc_calc_formulas_ternary(precursor_combinations, smiles_aldehyde, smiles_amine1, smiles_amine2, 6)
-        else:
-            precursor_combinations = poc_find_solutions(max_precursors, topicity_aldehyde, topicity_amine1)
-            poc_formula_dict = poc_calc_formulas(precursor_combinations, smiles_aldehyde, smiles_amine1, 6)
+                    # as three component, use poc_find_solutions_ternary and poc_calc_formulas_ternary
+                    precursor_combinations = poc_find_solutions_ternary(max_precursors, topicity_aldehyde, topicity_amine1, topicity_amine2)
+                    poc_formula_dict = poc_calc_formulas_ternary(precursor_combinations, smiles_aldehyde, smiles_amine1, smiles_amine2, 6)
+                else:
+                    raise ValueError("Unsupported number of components in reaction. Only 2 or 3 components are supported.")
+                
+                # Process each reaction to get the isotopes and matching peaks
+                isotopes_dict = get_top_10_isotopes(poc_formula_dict)
+                mz_intensity_data = read_csv(os.path.join(input_folder, file)) # Read the refined CSV file and extract the m/z and intensity data
+                matching_peaks_df = find_matching_isotopes_df(mz_intensity_data, isotopes_dict) # Find matching isotopes in the data
+                if matching_peaks_df.empty:
+                    print(f"Skipping {name}: No matching peaks found.")
+                    continue
 
-        isotopes_dict = get_top_10_isotopes(poc_formula_dict)
-        mz_intensity_data = read_csv(csv_path)
-        matching_peaks_df = find_matching_isotopes_df(mz_intensity_data, isotopes_dict)
+                result_df = calculate_mz_differences(matching_peaks_df) # Calculate m/z differences and infer charge from the matching peaks
+                result_filtered_df = result_df[result_df['predicted_charge'] == result_df['charge']] # Filter results to keep only those with matching charge
+                result_filtered_df = result_filtered_df.sort_values(by='found_intensity', ascending=False) # redorder to highest intensity first
 
-        if matching_peaks_df.empty:
-            print(f"Skipping {csv_path.name}: No matching peaks found.")
-            continue
+                # Save filtered results
+                output_file = os.path.join(output_folder, f"{name}_results.csv")
+                result_filtered_df.to_csv(output_file, index=False)
+                print(f"Saved: {output_file}")
 
-        result_df = calculate_mz_differences(matching_peaks_df)
-        result_filtered_df = result_df[result_df['predicted_charge'] == result_df['charge']]
+                # Reload and prepare plot data from the original CSV file
+                output_file = os.path.join(input_folder, file)
+                df = pd.read_csv(output_file)
+                if 'm/z' in df.columns:
+                    df = df.rename(columns={'m/z': 'mz'})
+                df2 = result_filtered_df.sort_values(by=["found_intensity"], ascending=False)
+                highest_intensity_peaks = df2.groupby("Formula")["found_intensity"].idxmax()
 
-        # Save filtered results
-        output_file = output_dir / f"{csv_path.stem}_output.csv"
-        result_filtered_df.to_csv(output_file, index=False)
-        print(f"Saved: {output_file}")
+                # Plot setup
+                fig, ax = plt.subplots(figsize=(12, 8))
+                ax.bar(df["mz"], df["Intensity"], width=0.01, edgecolor="red", color="red", alpha=0.3)
 
-        # Reload and prepare plot data
-        df = pd.read_csv(csv_path)
-        if 'm/z' in df.columns:
-            df = df.rename(columns={'m/z': 'mz'})
-        df2 = result_filtered_df.sort_values(by=["found_intensity"], ascending=False)
-        highest_intensity_peaks = df2.groupby("Formula")["found_intensity"].idxmax()
+                for idx, row in df2.loc[highest_intensity_peaks].iterrows():
+                    ax.bar(row["found_mz"], row["found_intensity"], width=0.01, edgecolor="black", color="black")
+                    ax.text(row["found_mz"], row["found_intensity"], row["Formula"],
+                            ha="center", va="bottom", fontsize=8, clip_on=True)
 
-        # Plot setup
-        fig, ax = plt.subplots(figsize=(12, 8))
-        ax.bar(df["mz"], df["Intensity"], width=0.01, edgecolor="red", color="red", alpha=0.3)
+                # Add RDKit molecule images
+                smiles_list = [smiles_aldehyde, smiles_amine1] + ([smiles_amine2] if smiles_amine2 else [])
+                mol_images = []
+                for smi in smiles_list:
+                    mol = Chem.MolFromSmiles(smi)
+                    if mol:
+                        img = Draw.MolToImage(mol, size=(300, 300))
+                        mol_images.append(OffsetImage(img, zoom=0.4))
 
-        for idx, row in df2.loc[highest_intensity_peaks].iterrows():
-            ax.bar(row["found_mz"], row["found_intensity"], width=0.01, edgecolor="black", color="black")
-            ax.text(row["found_mz"], row["found_intensity"], row["Formula"],
-                    ha="center", va="bottom", fontsize=8, clip_on=True)
+                if mol_images:
+                    hbox = HPacker(children=mol_images, align="center", pad=0, sep=10)
+                    anchored_box = AnchoredOffsetbox(
+                        loc='upper right', child=hbox, pad=0.5, frameon=False,
+                        bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes, borderpad=0.3
+                    )
+                    ax.add_artist(anchored_box)
 
-        # Add RDKit molecule images
-        smiles_list = [smiles_aldehyde, smiles_amine1] + ([smiles_amine2] if smiles_amine2 else [])
-        mol_images = []
-        for smi in smiles_list:
-            mol = Chem.MolFromSmiles(smi)
-            if mol:
-                img = Draw.MolToImage(mol, size=(300, 300))
-                mol_images.append(OffsetImage(img, zoom=0.4))
+                # Format and save plot
+                ax.set_xlim(199.5, 3200.5)
+                ax.set_xlabel("m/z")
+                ax.set_ylabel("Intensity")
+                ax.set_title(f"Matching Peaks: {name}")
+                plt.tight_layout()
+                plt.savefig(os.path.join(output_folder, f"{name}_plot.png"), dpi=300)
+                plt.close()
 
-        if mol_images:
-            hbox = HPacker(children=mol_images, align="center", pad=0, sep=10)
-            anchored_box = AnchoredOffsetbox(
-                loc='upper right', child=hbox, pad=0.5, frameon=False,
-                bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes, borderpad=0.3
-            )
-            ax.add_artist(anchored_box)
-
-        # Format and save plot
-        ax.set_xlim(199.5, 3200.5)
-        ax.set_xlabel("m/z")
-        ax.set_ylabel("Intensity")
-        ax.set_title(f"Matching Peaks: {csv_path.stem}")
-        plt.tight_layout()
-        plt.savefig(output_dir / f"{csv_path.stem}.png", dpi=300)
-        plt.close()
-
-        # Save processed data
-        df2_file = output_dir / f"{csv_path.stem}_processed.csv"
-        df2.to_csv(df2_file, index=False)
-
-# Example usage:
-# main("/path/to/ms_csv_dir", "/path/to/reactions_json_dir")
+                # Save processed data
+                df2_file =  os.path.join(output_folder, f"{name}_processed.csv")
+                df2.to_csv(df2_file, index=False)
+            else:
+                continue  # Skip to the next CSV file if no matching reaction is found
+    print("Processing complete.")
 if __name__ == "__main__":
-    main('/Users/user/Documents/GitHub/auto_analysis_lcms/peak_mz_refined','O=CC1=CC(C=O)=CC(C=O)=C1','NC1C(N)CCCC1','CC(C)(N)CN')
+    main()
+    print("All files processed successfully.")

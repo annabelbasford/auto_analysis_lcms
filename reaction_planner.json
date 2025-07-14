@@ -1,0 +1,29 @@
+[
+    {
+        "base_name": "cc3",
+        "num_components": 2,
+        "smiles_aldehyde": "O=Cc1cc(C=O)cc(C=O)c1",
+        "smiles_amine": "N[C@H]1[C@H](N)CCCC1"
+    },
+    {
+        "base_name": "scrambled_cage",
+        "num_components": 3,
+        "smiles_aldehyde": "O=Cc1cc(C=O)cc(C=O)c1",
+        "smiles_amine1": "N[C@H]1[C@H](N)CCCC1",
+        "smiles_amine2": "CC(C)(N)CN"
+    },
+    {
+        "base_name": "PA-CC3-SS",
+        "num_components": 3,
+        "smiles_aldehyde": "O=Cc1cc(C=O)cc(C=O)c1",
+        "smiles_amine1": "N[C@H]1[C@H](N)CCCC1",
+        "smiles_amine2": "O=C(NC1CCCCC1N)C2=CC(C(NC3CCCCC3N)=O)=CC(C(NC4CCCCC4N)=O)=C2"
+    },
+    {
+        "base_name": "PA-CC3-SR",
+        "num_components": 3,
+        "smiles_aldehyde": "O=Cc1cc(C=O)cc(C=O)c1",
+        "smiles_amine1": "N[C@H]1[C@H](N)CCCC1",
+        "smiles_amine2": "O=C(NC1CCCCC1N)C2=CC(C(NC3CCCCC3N)=O)=CC(C(NC4CCCCC4N)=O)=C2"
+    }
+]

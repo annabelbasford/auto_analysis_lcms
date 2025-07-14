@@ -6,12 +6,15 @@ import glob
 from scipy.signal import find_peaks
 
 # path to the data
-data_path = '/auto_analysis_lcms/DAD_uv/'
+data_path = '/home/abasford/projects/auto_analysis_lcms/DAD_uv/'
 file_names = [f for f in os.listdir(data_path) if f.endswith('_uv.csv')]
-
+print(file_names)
+ 
 for file in file_names:
     # read the data
     df = pd.read_csv(data_path + file)
+    # basename without .csv
+    base_name = os.path.splitext(file)[0]
     # make data positive
     df['intensity'] = df['intensity'] - df['intensity'].min()
     # drop data points before 2 minutes
@@ -145,14 +148,13 @@ for file in file_names:
     plt.tight_layout()
 
     # save plot
-    png_path = '/home/abasford/projects/BO/auto_analysis_lcms/pngs'
+    png_path = '/home/abasford/projects/auto_analysis_lcms/pngs'
     # save to the png_path
     os.makedirs(png_path, exist_ok=True)
-    plt.savefig(os.path.join(png_path, f'{file}.png'), dpi=300)
+    plt.savefig(os.path.join(png_path, f'{base_name}.png'), dpi=300)
 
     # save peak info
     peak_df = pd.DataFrame({'peak_rt_uv': peak_rt_uv, 'peak_start_uv': peak_start_uv, 'peak_end_uv': peak_end_uv, 'peak_area': peak_area, 'peak_rt_tic': peak_rt_tic, 'peak_start_tic': peak_start_tic, 'peak_end_tic': peak_end_tic})
-    # split file name to get the base name
-    base_name = os.path.splitext(file)[0]
+    
     # save the peak info to a csv file with base name
     peak_df.to_csv(f'{base_name}_peak_rt.csv', index=False)

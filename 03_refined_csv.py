@@ -4,8 +4,9 @@ import csv
 import matplotlib.pyplot as plt
 
 # Input/output folders
-input_folder = '/Users/user/Documents/GitHub/auto_analysis_lcms'
-output_folder = os.path.join(input_folder, 'peak_mz_refined')
+parent_folder = '/home/abasford/projects/auto_analysis_lcms/'
+input_folder = '/home/abasford/projects/auto_analysis_lcms/peaks_mz_csv/'
+output_folder = os.path.join(parent_folder, 'peaks_mz_refined')
 os.makedirs(output_folder, exist_ok=True)
 
 # Get all per-peak CSV files (e.g., sample_peak_1.csv)
@@ -28,7 +29,7 @@ for peak_file in peak_csvs:
         peak_idx = int(peak_file.split('_peak_')[1].split('.')[0]) - 1
 
         # Load peak_rt_tic from UV peak summary
-        peak_rt_file = os.path.join(input_folder, f'{base_name}_uv_peak_rt.csv')
+        peak_rt_file = os.path.join(parent_folder, f'{base_name}_uv_peak_rt.csv')
         if not os.path.exists(peak_rt_file):
             print(f"Missing peak_rt file for {base_name}, skipping.")
             continue

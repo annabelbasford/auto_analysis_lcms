@@ -4,8 +4,11 @@ import pandas as pd
 from pyteomics import mzml
 
 # Paths
-input_folder = '/auto_analysis/mzML/'
-output_folder = '/auto_analysis/'
+parent_folder = '/home/abasford/projects/auto_analysis_lcms/'
+input_folder = '/home/abasford/projects/auto_analysis_lcms/mzML/'
+output_folder = '/home/abasford/projects/auto_analysis_lcms/peaks_mz_csv/'
+# allow the output folder to be created if it does not exist
+os.makedirs(output_folder, exist_ok=True)
 # load all mzML files
 filenames = [f for f in os.listdir(input_folder) if f.endswith('.mzML')]
 
@@ -13,8 +16,8 @@ filenames = [f for f in os.listdir(input_folder) if f.endswith('.mzML')]
 for file in filenames:
     # Load peak ranges from corresponding peak CSV
     base_name = os.path.splitext(file)[0]
-    peak_csv_file = os.path.join(output_folder, f'{base_name}_uv_peak_rt.csv')
-    peak_df = pd.read_csv(peak_csv_file)
+    peak_csv_file = os.path.join(parent_folder, f'{base_name}_uv_peak_rt.csv')
+    peak_df = pd.read_csv(f'{base_name}_uv_peak_rt.csv')
     peak_ranges = list(zip(peak_df['peak_start_tic'], peak_df['peak_end_tic']))
 
     # Open mzML file
